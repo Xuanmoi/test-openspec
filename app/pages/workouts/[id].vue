@@ -3,6 +3,7 @@ import type { WorkoutFormData } from '~/types/fitness'
 import { formatDateTime } from '~/utils/date'
 import { timeOfDayLabel } from '~/utils/labels'
 
+const toast = useToast()
 const route = useRoute()
 const router = useRouter()
 const workoutStore = useWorkoutStore()
@@ -13,107 +14,109 @@ const record = computed(() => workoutStore.getById(id.value))
 const isEditing = ref(false)
 const showDeleteModal = ref(false)
 
-watchEffect(() => {
-  if (!record.value) return
-})
-
 function handleUpdate(data: WorkoutFormData) {
   const result = workoutStore.update(id.value, data)
   if (result) {
     isEditing.value = false
+    toast.add({ title: '已更新', color: 'success' })
+  }
+  else {
+    toast.add({ title: '更新失败', color: 'error' })
   }
 }
 
 function handleDelete() {
   workoutStore.remove(id.value)
-  router.push('/workouts')
+  toast.add({ title: '已删除', color: 'success' })
+  router.push('/')
 }
 </script>
 
 <template>
-  <div v-if="!record" class="text-center py-12">
-    <UIcon name="i-lucide-file-question" class="mx-auto mb-2 size-10 text-gray-400" />
-    <p class="text-gray-500">
-      训练记录不存在
+  <div v-if="!record" class="app-card px-6 py-12 text-center">
+    <UIcon name="i-lucide-file-question" class="mx-auto mb-2 size-10 text-gray-300" />
+    <p class="font-bold text-gray-950 dark:text-white">
+      记录不存在
     </p>
-    <UButton to="/workouts" class="mt-4" label="返回列表" />
+    <p class="mt-1 text-sm text-gray-500">
+      这条训练可能已经被删除
+    </p>
+    <UButton to="/" class="pressable mt-4" color="primary" label="返回今日" />
   </div>
 
-  <div v-else class="space-y-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ isEditing ? '编辑训练记录' : '训练详情' }}
-        </h1>
-        <p v-if="!isEditing" class="text-sm text-gray-500">
-          {{ record.date }} · {{ timeOfDayLabel(record.timeOfDay) }}
-        </p>
-      </div>
-      <div v-if="!isEditing" class="flex gap-2">
-        <UButton variant="outline" icon="i-lucide-pencil" label="编辑" @click="isEditing = true" />
-        <UButton color="error" variant="outline" icon="i-lucide-trash-2" label="删除" @click="showDeleteModal = true" />
-      </div>
-    </div>
-
-    <UCard v-if="isEditing">
+  <div v-else :class="isEditing ? '' : 'pb-[calc(var(--app-action-bar-height)+1rem)]'">
+    <template v-if="isEditing">
+      <MobileTopBar back title="编辑训练" subtitle="调整训练内容后保存" />
       <WorkoutForm
-        :initial="{
-          date: record.date,
-          timeOfDay: record.timeOfDay,
-          groups: record.groups,
-        }"
+        :initial="{ date: record.date, timeOfDay: record.timeOfDay, groups: record.groups }"
         submit-label="保存修改"
         show-cancel
         @submit="handleUpdate"
         @cancel="isEditing = false"
       />
-    </UCard>
-
-    <template v-else>
-      <UCard>
-        <p class="text-xs text-gray-400">
-          创建于 {{ formatDateTime(record.createdAt) }}
-          <span v-if="record.updatedAt !== record.createdAt">
-            · 更新于 {{ formatDateTime(record.updatedAt) }}
-          </span>
-        </p>
-      </UCard>
-
-      <div v-if="record.groups.length === 0" class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
-        该记录暂无训练大组
-      </div>
-
-      <UCard v-for="(group, index) in record.groups" :key="group.id">
-        <h3 class="mb-3 font-semibold">
-          {{ index + 1 }}. {{ group.exerciseName }}
-        </h3>
-        <div v-if="group.sets.length === 0" class="text-sm text-gray-400">
-          暂无小组
-        </div>
-        <div v-else class="space-y-2">
-          <div
-            v-for="set in group.sets"
-            :key="set.id"
-            class="flex flex-wrap gap-x-4 gap-y-1 text-sm"
-          >
-            <span>第 {{ set.setNumber }} 组</span>
-            <span>{{ set.weight }} kg</span>
-            <span v-if="set.notes" class="text-gray-500">{{ set.notes }}</span>
-          </div>
-        </div>
-      </UCard>
     </template>
 
-    <UModal v-model:open="showDeleteModal" title="确认删除">
-      <template #body>
-        <p>确定要删除这条训练记录吗？此操作不可撤销。</p>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton variant="outline" label="取消" @click="showDeleteModal = false" />
-          <UButton color="error" label="确认删除" @click="handleDelete" />
-        </div>
-      </template>
-    </UModal>
+    <template v-else>
+      <MobileTopBar back title="训练详情" :subtitle="`${record.date} · ${timeOfDayLabel(record.timeOfDay)}`" />
+
+      <section class="soft-gradient mb-4 rounded-[1.6rem] p-5 text-white shadow-2xl shadow-blue-500/20">
+        <p class="text-sm font-semibold text-white/75">
+          {{ timeOfDayLabel(record.timeOfDay) }}训练
+        </p>
+        <h1 class="mt-2 text-3xl font-black tracking-tight">
+          {{ record.groups[0]?.exerciseName || '训练记录' }}
+        </h1>
+        <p class="mt-2 text-sm text-white/80">
+          {{ record.groups.length }} 个动作 · 创建于 {{ formatDateTime(record.createdAt) }}
+        </p>
+      </section>
+
+      <article class="space-y-3">
+        <SectionCard v-if="record.groups.length === 0" title="训练内容" icon="i-lucide-list">
+          <p class="text-center text-sm text-gray-400">
+            暂无训练内容
+          </p>
+        </SectionCard>
+
+        <SectionCard
+          v-for="(group, index) in record.groups"
+          :key="group.id"
+          :title="group.exerciseName || `动作 ${index + 1}`"
+          :subtitle="`${group.sets.length} 个小组`"
+          icon="i-lucide-dumbbell"
+        >
+          <div class="space-y-2">
+            <div
+              v-for="set in group.sets"
+              :key="set.id"
+              class="flex items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3 text-sm dark:bg-gray-950/40"
+            >
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-white text-xs font-black text-gray-700 shadow-sm dark:bg-gray-900 dark:text-gray-200">
+                {{ set.setNumber }}
+              </span>
+              <span class="font-bold text-gray-950 dark:text-white">{{ set.weight }} kg</span>
+              <span v-if="set.notes" class="min-w-0 flex-1 truncate text-xs text-gray-500">{{ set.notes }}</span>
+            </div>
+            <p v-if="group.sets.length === 0" class="text-sm text-gray-400">
+              暂无小组记录
+            </p>
+          </div>
+        </SectionCard>
+      </article>
+
+      <MobileActionBar
+        submit-label="编辑记录"
+        cancel-label="删除"
+        show-cancel
+        @submit="isEditing = true"
+        @cancel="showDeleteModal = true"
+      />
+    </template>
+
+    <AppDeleteModal
+      v-model:open="showDeleteModal"
+      message="确定要删除这条训练记录吗？此操作不可撤销。"
+      @confirm="handleDelete"
+    />
   </div>
 </template>

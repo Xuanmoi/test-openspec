@@ -1,47 +1,48 @@
 <script setup lang="ts">
-import { timeOfDayLabel } from '~/utils/labels'
+import type { WorkoutRecord } from '~/types/fitness'
 
 const workoutStore = useWorkoutStore()
+
+const records = computed(() => workoutStore.sortedRecords)
+
+const groupedRecords = computed(() => {
+  const groups = new Map<string, WorkoutRecord[]>()
+  for (const record of records.value) {
+    const list = groups.get(record.date) ?? []
+    list.push(record)
+    groups.set(record.date, list)
+  }
+  return [...groups.entries()].map(([date, items]) => ({ date, items }))
+})
 </script>
 
 <template>
-  <div>
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold">
-        训练记录
-      </h1>
-      <UButton to="/workouts/new" icon="i-lucide-plus" label="新建" />
-    </div>
+  <div class="space-y-4">
+    <MobileTopBar back title="训练历史" :subtitle="`${records.length} 条记录`" />
 
-    <div v-if="workoutStore.sortedRecords.length === 0" class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-700">
-      <UIcon name="i-lucide-dumbbell" class="mx-auto mb-2 size-8 opacity-50" />
-      <p>暂无训练记录</p>
-      <p class="mt-1 text-sm">
-        点击「新建」开始记录今天的训练
+    <div v-if="records.length === 0" class="app-card px-6 py-12 text-center">
+      <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40">
+        <UIcon name="i-lucide-dumbbell" class="size-8" />
+      </div>
+      <p class="font-bold text-gray-950 dark:text-white">
+        还没有训练记录
       </p>
-      <UButton to="/workouts/new" class="mt-4" label="新建训练记录" />
+      <p class="mt-1 text-sm text-gray-500">
+        从一次简单训练开始
+      </p>
+      <UButton to="/workouts/new" class="pressable mt-5" color="primary" label="开始记录" />
     </div>
 
-    <div v-else class="space-y-3">
-      <UCard
-        v-for="record in workoutStore.sortedRecords"
+    <section v-for="group in groupedRecords" v-else :key="group.date" class="space-y-3">
+      <h2 class="px-1 text-sm font-black text-gray-500">
+        {{ group.date }}
+      </h2>
+      <WorkoutPreviewCard
+        v-for="record in group.items"
         :key="record.id"
-        class="cursor-pointer transition hover:ring-2 hover:ring-primary/30"
+        :record="record"
         @click="navigateTo(`/workouts/${record.id}`)"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="font-medium">
-              {{ record.date }} · {{ timeOfDayLabel(record.timeOfDay) }}
-            </p>
-            <p class="text-sm text-gray-500">
-              {{ record.groups.length }} 个大组
-              · {{ record.groups.reduce((sum, g) => sum + g.sets.length, 0) }} 个小组
-            </p>
-          </div>
-          <UIcon name="i-lucide-chevron-right" class="size-5 text-gray-400" />
-        </div>
-      </UCard>
-    </div>
+      />
+    </section>
   </div>
 </template>

@@ -1,0 +1,106 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-bg: #f4f8ff;
+  --app-surface: #ffffff;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --app-primary: #2563eb;
+  --app-primary-2: #38bdf8;
+  --app-border: #dbeafe;
+  --app-bottom-nav-height: 4.75rem;
+  --app-action-bar-height: 5rem;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  background: var(--app-bg);
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+.dark {
+  --app-bg: #0f172a;
+  --app-surface: #1e293b;
+  --app-text: #f8fafc;
+  --app-muted: #94a3b8;
+  --app-border: #334155;
+}
+
+.app-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top left, rgb(37 99 235 / 0.08), transparent 18rem),
+    radial-gradient(circle at top right, rgb(56 189 248 / 0.06), transparent 14rem),
+    var(--app-bg);
+}
+
+.app-viewport {
+  width: 100%;
+  max-width: 28rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--app-bg);
+}
+
+.app-content {
+  padding: calc(0.875rem + var(--app-safe-top)) 1rem calc(var(--app-bottom-nav-height) + var(--app-safe-bottom) + 1rem);
+}
+
+.app-content.has-action-bar {
+  padding-bottom: calc(var(--app-bottom-nav-height) + var(--app-action-bar-height) + var(--app-safe-bottom));
+}
+
+.app-bottom-nav {
+  padding-bottom: var(--app-safe-bottom);
+}
+
+.app-action-bar {
+  bottom: calc(var(--app-bottom-nav-height) + var(--app-safe-bottom));
+}
+
+.tap-target {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.pressable {
+  transform: translateZ(0);
+  transition: transform 140ms ease, opacity 140ms ease, box-shadow 180ms ease;
+}
+
+.pressable:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.app-card {
+  border: 1px solid var(--app-border);
+  border-radius: 1.25rem;
+  background: var(--app-surface);
+  box-shadow: 0 4px 24px rgb(37 99 235 / 0.06);
+}
+
+.dark .app-card {
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: 0 4px 24px rgb(0 0 0 / 0.2);
+}
+
+.primary-gradient {
+  background: linear-gradient(135deg, var(--app-primary), var(--app-primary-2));
+}
+
+.soft-gradient {
+  background:
+    radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.4), transparent 6rem),
+    linear-gradient(135deg, #2563eb, #38bdf8);
+}

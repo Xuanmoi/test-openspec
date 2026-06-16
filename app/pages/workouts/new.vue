@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import type { WorkoutFormData } from '~/types/fitness'
 
-const workoutStore = useWorkoutStore()
+const toast = useToast()
 const router = useRouter()
+const workoutStore = useWorkoutStore()
 
 function handleSubmit(data: WorkoutFormData) {
   workoutStore.create(data)
-  router.push('/workouts')
+  toast.add({ title: '记录成功', description: '训练记录已保存', color: 'success' })
+  router.push('/')
 }
 </script>
 
 <template>
-  <div>
-    <h1 class="mb-4 text-2xl font-bold">
-      新建训练记录
-    </h1>
-    <UCard>
-      <WorkoutForm submit-label="保存训练记录" @submit="handleSubmit" />
-    </UCard>
+  <div class="space-y-4">
+    <MobileTopBar back title="记录训练" subtitle="按步骤填写今天的训练内容" />
+    <WorkoutForm submit-label="保存记录" @submit="handleSubmit" />
   </div>
 </template>

@@ -13,6 +13,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const toast = useToast()
 const workoutStore = useWorkoutStore()
 
 const form = reactive<WorkoutFormData>({
@@ -22,6 +23,20 @@ const form = reactive<WorkoutFormData>({
     ? JSON.parse(JSON.stringify(props.initial.groups))
     : [],
 })
+
+const openGroups = ref<Record<string, boolean>>({})
+
+watch(
+  () => form.groups.map(g => g.id),
+  (ids) => {
+    for (const id of ids) {
+      if (openGroups.value[id] === undefined) {
+        openGroups.value[id] = true
+      }
+    }
+  },
+  { immediate: true },
+)
 
 const errors = reactive({
   timeOfDay: '',
@@ -36,11 +51,18 @@ function clearErrors() {
 }
 
 function addGroup() {
-  form.groups.push(workoutStore.createEmptyGroup())
+  const group = workoutStore.createEmptyGroup()
+  form.groups.push(group)
+  openGroups.value[group.id] = true
 }
 
 function removeGroup(groupId: string) {
   form.groups = form.groups.filter(g => g.id !== groupId)
+  delete openGroups.value[groupId]
+}
+
+function toggleGroup(groupId: string) {
+  openGroups.value[groupId] = !openGroups.value[groupId]
 }
 
 function addSet(group: ExerciseGroup) {
@@ -51,6 +73,7 @@ function addSet(group: ExerciseGroup) {
     ...workoutStore.createEmptySet(),
     setNumber: nextNumber,
   })
+  openGroups.value[group.id] = true
 }
 
 function removeSet(group: ExerciseGroup, setId: string) {
@@ -89,6 +112,10 @@ function validate(): boolean {
     }
   }
 
+  if (!valid) {
+    toast.add({ title: '请检查表单', description: '部分必填项未填写', color: 'warning' })
+  }
+
   return valid
 }
 
@@ -110,97 +137,138 @@ function handleSubmit() {
 </script>
 
 <template>
-  <form class="space-y-6" @submit.prevent="handleSubmit">
-    <div class="grid gap-4 sm:grid-cols-2">
-      <UFormField label="日期">
-        <UInput v-model="form.date" type="date" class="w-full" />
-      </UFormField>
-      <UFormField label="时段" required :error="errors.timeOfDay">
-        <USelect
-          v-model="form.timeOfDay"
-          :items="TIME_OF_DAY_OPTIONS"
-          value-key="value"
-          label-key="label"
-          placeholder="选择时段"
-          class="w-full"
-        />
-      </UFormField>
-    </div>
-
-    <div>
-      <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold">
-          训练大组
-        </h3>
-        <UButton type="button" size="sm" variant="outline" icon="i-lucide-plus" label="添加大组" @click="addGroup" />
+  <form class="space-y-4 pb-[calc(var(--app-action-bar-height)+1rem)]" @submit.prevent="handleSubmit">
+    <SectionCard title="基础信息" subtitle="日期会默认填为今天，也可以手动调整" icon="i-lucide-calendar-days">
+      <div class="grid grid-cols-1 gap-3">
+        <UFormField label="训练日期">
+          <UInput v-model="form.date" type="date" size="lg" class="w-full" />
+        </UFormField>
+        <UFormField label="训练时段" required :error="errors.timeOfDay">
+          <USelect
+            v-model="form.timeOfDay"
+            :items="TIME_OF_DAY_OPTIONS"
+            value-key="value"
+            label-key="label"
+            placeholder="选择时段"
+            size="lg"
+            class="w-full"
+          />
+        </UFormField>
       </div>
-      <p v-if="errors.groups" class="mb-2 text-sm text-error">
+    </SectionCard>
+
+    <SectionCard title="训练动作" subtitle="每个动作是一组，可继续添加多组小组明细" icon="i-lucide-dumbbell">
+      <template #actions>
+        <UButton type="button" class="pressable" size="sm" color="primary" variant="soft" icon="i-lucide-plus" label="动作" @click="addGroup" />
+      </template>
+
+      <p v-if="errors.groups" class="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:bg-red-950/40">
         {{ errors.groups }}
       </p>
 
-      <div v-if="form.groups.length === 0" class="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700">
-        点击「添加大组」开始记录训练动作
+      <div v-if="form.groups.length === 0" class="rounded-[1.2rem] border border-dashed border-gray-200 p-7 text-center dark:border-gray-800">
+        <UIcon name="i-lucide-circle-plus" class="mx-auto mb-2 size-8 text-gray-300" />
+        <p class="text-sm text-gray-500">
+          添加第一个训练动作
+        </p>
       </div>
 
-      <div v-else class="space-y-4">
-        <UCard v-for="(group, groupIndex) in form.groups" :key="group.id">
-          <div class="mb-3 flex items-start justify-between gap-2">
-            <UFormField :label="`大组 ${groupIndex + 1} - 动作名称`" class="flex-1">
-              <UInput v-model="group.exerciseName" placeholder="例如：深蹲" class="w-full" />
+      <div v-else class="space-y-3">
+        <div
+          v-for="(group, groupIndex) in form.groups"
+          :key="group.id"
+          class="overflow-hidden rounded-[1.2rem] border border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/40"
+        >
+          <button
+            type="button"
+            class="pressable flex w-full items-center gap-3 px-3 py-3 text-left"
+            @click="toggleGroup(group.id)"
+          >
+            <span class="primary-gradient flex size-9 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-white">
+              {{ groupIndex + 1 }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-bold text-gray-950 dark:text-white">
+                {{ group.exerciseName || '未命名动作' }}
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ group.sets.length }} 个小组
+              </p>
+            </div>
+            <UIcon
+              name="i-lucide-chevron-down"
+              class="size-5 text-gray-400 transition-transform"
+              :class="{ 'rotate-180': openGroups[group.id] }"
+            />
+          </button>
+
+          <div v-show="openGroups[group.id]" class="space-y-3 border-t border-white px-3 pb-3 pt-3 dark:border-gray-800">
+            <UFormField label="动作名称">
+              <UInput v-model="group.exerciseName" placeholder="例如：深蹲" size="lg" class="w-full" />
             </UFormField>
+
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-500">小组明细</span>
+              <UButton type="button" class="pressable" size="xs" color="primary" variant="soft" icon="i-lucide-plus" label="小组" @click="addSet(group)" />
+            </div>
+
+            <div v-if="group.sets.length === 0" class="rounded-xl bg-white/70 py-4 text-center text-sm text-gray-400 dark:bg-gray-900/60">
+              暂无小组，点击右上角添加
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="set in group.sets"
+                :key="set.id"
+                class="rounded-2xl bg-white p-3 dark:bg-gray-900"
+              >
+                <div class="mb-3 flex items-center justify-between">
+                  <span class="text-xs font-bold text-gray-500">第 {{ set.setNumber }} 组</span>
+                  <UButton
+                    type="button"
+                    size="xs"
+                    color="error"
+                    variant="ghost"
+                    icon="i-lucide-x"
+                    class="tap-target pressable"
+                    @click="removeSet(group, set.id)"
+                  />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <UFormField label="组别" :error="errors.sets[set.id]">
+                    <UInput v-model.number="set.setNumber" type="number" min="1" class="w-full" />
+                  </UFormField>
+                  <UFormField label="重量 kg">
+                    <UInput v-model.number="set.weight" type="number" min="0" step="0.5" class="w-full" />
+                  </UFormField>
+                  <UFormField label="备注" class="col-span-2">
+                    <UInput v-model="set.notes" placeholder="可选，例如：状态不错" class="w-full" />
+                  </UFormField>
+                </div>
+              </div>
+            </div>
+
             <UButton
               type="button"
+              class="pressable"
               size="sm"
               color="error"
               variant="ghost"
               icon="i-lucide-trash-2"
-              class="mt-6"
+              label="删除这个动作"
+              block
               @click="removeGroup(group.id)"
             />
           </div>
-
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-600">小组</span>
-              <UButton type="button" size="xs" variant="outline" label="添加小组" @click="addSet(group)" />
-            </div>
-
-            <div v-if="group.sets.length === 0" class="text-sm text-gray-400">
-              暂无小组，点击「添加小组」
-            </div>
-
-            <div
-              v-for="set in group.sets"
-              :key="set.id"
-              class="grid gap-2 rounded-md bg-gray-50 p-3 sm:grid-cols-[80px_1fr_1fr_auto] dark:bg-gray-900"
-            >
-              <UFormField label="组别" :error="errors.sets[set.id]">
-                <UInput v-model.number="set.setNumber" type="number" min="1" class="w-full" />
-              </UFormField>
-              <UFormField label="重量 (kg)">
-                <UInput v-model.number="set.weight" type="number" min="0" step="0.5" class="w-full" />
-              </UFormField>
-              <UFormField label="备注">
-                <UInput v-model="set.notes" placeholder="可选" class="w-full" />
-              </UFormField>
-              <UButton
-                type="button"
-                size="sm"
-                color="error"
-                variant="ghost"
-                icon="i-lucide-x"
-                class="mt-5"
-                @click="removeSet(group, set.id)"
-              />
-            </div>
-          </div>
-        </UCard>
+        </div>
       </div>
-    </div>
+    </SectionCard>
 
-    <div class="flex gap-2">
-      <UButton type="submit" :label="submitLabel ?? '保存'" />
-      <UButton v-if="showCancel" type="button" variant="outline" label="取消" @click="emit('cancel')" />
-    </div>
+    <MobileActionBar
+      :submit-label="submitLabel ?? '保存记录'"
+      :show-cancel="showCancel"
+      @submit="handleSubmit"
+      @cancel="emit('cancel')"
+    />
   </form>
 </template>
