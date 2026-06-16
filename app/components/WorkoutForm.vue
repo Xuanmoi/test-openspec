@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ExerciseGroup, TimeOfDay, WorkoutFormData } from '~/types/fitness'
-import { TIME_OF_DAY_OPTIONS } from '~/utils/labels'
+import { TIME_OF_DAY_OPTIONS, WORKOUT_THEME_PRESETS } from '~/utils/labels'
 
 const props = defineProps<{
   initial?: WorkoutFormData
@@ -19,12 +19,25 @@ const workoutStore = useWorkoutStore()
 const form = reactive<WorkoutFormData>({
   date: props.initial?.date ?? todayDate(),
   timeOfDay: props.initial?.timeOfDay ?? guessTimeOfDay(),
+  theme: props.initial?.theme ?? '',
   groups: props.initial?.groups?.length
     ? JSON.parse(JSON.stringify(props.initial.groups))
     : [],
 })
 
 const openGroups = ref<Record<string, boolean>>({})
+
+function initShowNotes(groups: ExerciseGroup[]) {
+  const state: Record<string, boolean> = {}
+  for (const group of groups) {
+    for (const set of group.sets) {
+      state[set.id] = !!set.notes?.trim()
+    }
+  }
+  return state
+}
+
+const showNotes = ref<Record<string, boolean>>(initShowNotes(form.groups))
 
 watch(
   () => form.groups.map(g => g.id),
@@ -54,9 +67,18 @@ function addGroup() {
   const group = workoutStore.createEmptyGroup()
   form.groups.push(group)
   openGroups.value[group.id] = true
+  for (const set of group.sets) {
+    showNotes.value[set.id] = false
+  }
 }
 
 function removeGroup(groupId: string) {
+  const group = form.groups.find(g => g.id === groupId)
+  if (group) {
+    for (const set of group.sets) {
+      delete showNotes.value[set.id]
+    }
+  }
   form.groups = form.groups.filter(g => g.id !== groupId)
   delete openGroups.value[groupId]
 }
@@ -69,15 +91,22 @@ function addSet(group: ExerciseGroup) {
   const nextNumber = group.sets.length > 0
     ? Math.max(...group.sets.map(s => s.setNumber)) + 1
     : 1
-  group.sets.push({
-    ...workoutStore.createEmptySet(),
-    setNumber: nextNumber,
-  })
+  const newSet = workoutStore.createEmptySet(nextNumber)
+  group.sets.push(newSet)
+  showNotes.value[newSet.id] = false
   openGroups.value[group.id] = true
 }
 
 function removeSet(group: ExerciseGroup, setId: string) {
   group.sets = group.sets.filter(s => s.id !== setId)
+  delete showNotes.value[setId]
+}
+
+function normalizeNotes(setId: string, notes?: string) {
+  const trimmed = notes?.trim()
+  if (!trimmed) return undefined
+  if (!showNotes.value[setId]) return trimmed
+  return trimmed
 }
 
 function validate(): boolean {
@@ -109,6 +138,10 @@ function validate(): boolean {
         errors.sets[set.id] = '请填写有效重量'
         valid = false
       }
+      if (set.reps == null || set.reps < 1 || !Number.isInteger(set.reps)) {
+        errors.sets[set.id] = '请填写有效个数'
+        valid = false
+      }
     }
   }
 
@@ -124,12 +157,13 @@ function handleSubmit() {
   emit('submit', {
     date: form.date,
     timeOfDay: form.timeOfDay,
+    theme: form.theme?.trim() || undefined,
     groups: form.groups.map(g => ({
       ...g,
       exerciseName: g.exerciseName.trim(),
       sets: g.sets.map(s => ({
         ...s,
-        notes: s.notes?.trim() || undefined,
+        notes: normalizeNotes(s.id, s.notes),
       })),
     })),
   })
@@ -153,6 +187,18 @@ function handleSubmit() {
             size="lg"
             class="w-full"
           />
+        </UFormField>
+        <UFormField label="训练主题（可选）" hint="不填则使用第一个动作名">
+          <UInput
+            v-model="form.theme"
+            placeholder="臀腿、背、胸肩、核心..."
+            size="lg"
+            class="w-full"
+            list="workout-theme-presets"
+          />
+          <datalist id="workout-theme-presets">
+            <option v-for="preset in WORKOUT_THEME_PRESETS" :key="preset" :value="preset" />
+          </datalist>
         </UFormField>
       </div>
     </SectionCard>
@@ -212,11 +258,7 @@ function handleSubmit() {
               <UButton type="button" class="pressable" size="xs" color="primary" variant="soft" icon="i-lucide-plus" label="小组" @click="addSet(group)" />
             </div>
 
-            <div v-if="group.sets.length === 0" class="rounded-xl bg-white/70 py-4 text-center text-sm text-gray-400 dark:bg-gray-900/60">
-              暂无小组，点击右上角添加
-            </div>
-
-            <div v-else class="space-y-2">
+            <div class="space-y-2">
               <div
                 v-for="set in group.sets"
                 :key="set.id"
@@ -234,15 +276,21 @@ function handleSubmit() {
                     @click="removeSet(group, set.id)"
                   />
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <UFormField label="组别" :error="errors.sets[set.id]">
-                    <UInput v-model.number="set.setNumber" type="number" min="1" class="w-full" />
+                <div class="grid grid-cols-3 gap-2">
+                  <UFormField label="组" :error="errors.sets[set.id]">
+                    <UInput v-model.number="set.setNumber" type="number" min="1" size="sm" class="w-full" />
                   </UFormField>
-                  <UFormField label="重量 kg">
-                    <UInput v-model.number="set.weight" type="number" min="0" step="0.5" class="w-full" />
+                  <UFormField label="kg">
+                    <UInput v-model.number="set.weight" type="number" min="0" step="0.5" size="sm" class="w-full" />
                   </UFormField>
-                  <UFormField label="备注" class="col-span-2">
-                    <UInput v-model="set.notes" placeholder="可选，例如：状态不错" class="w-full" />
+                  <UFormField label="个">
+                    <UInput v-model.number="set.reps" type="number" min="1" step="1" size="sm" class="w-full" />
+                  </UFormField>
+                </div>
+                <div class="mt-2 space-y-2">
+                  <UCheckbox v-model="showNotes[set.id]" label="添加备注" />
+                  <UFormField v-if="showNotes[set.id]" label="备注">
+                    <UInput v-model="set.notes" placeholder="例如：状态不错" class="w-full" />
                   </UFormField>
                 </div>
               </div>

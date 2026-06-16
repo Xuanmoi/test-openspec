@@ -15,6 +15,7 @@ export interface WorkoutSet {
   id: string
   setNumber: number
   weight: number
+  reps?: number
   notes?: string
 }
 
@@ -28,6 +29,7 @@ export interface WorkoutRecord {
   id: string
   date: string
   timeOfDay: TimeOfDay
+  theme?: string
   groups: ExerciseGroup[]
   createdAt: string
   updatedAt: string
@@ -44,5 +46,6 @@ export interface ProfileFormData {
 export interface WorkoutFormData {
   date: string
   timeOfDay: TimeOfDay | ''
+  theme?: string
   groups: ExerciseGroup[]
 }

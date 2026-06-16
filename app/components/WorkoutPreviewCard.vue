@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WorkoutRecord } from '~/types/fitness'
-import { timeOfDayLabel } from '~/utils/labels'
+import { resolveDisplayTheme, timeOfDayLabel } from '~/utils/labels'
 
 const props = defineProps<{
   record: WorkoutRecord
@@ -14,10 +14,7 @@ const totalSets = computed(() =>
   props.record.groups.reduce((sum, group) => sum + group.sets.length, 0),
 )
 
-const title = computed(() => {
-  const first = props.record.groups.find(group => group.exerciseName.trim())?.exerciseName
-  return first || `${timeOfDayLabel(props.record.timeOfDay)}训练`
-})
+const title = computed(() => resolveDisplayTheme(props.record))
 
 const summary = computed(() => `${props.record.groups.length} 个动作 · ${totalSets.value} 组`)
 </script>

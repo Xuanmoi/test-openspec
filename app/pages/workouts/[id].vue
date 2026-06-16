@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { WorkoutFormData } from '~/types/fitness'
 import { formatDateTime } from '~/utils/date'
-import { timeOfDayLabel } from '~/utils/labels'
+import { resolveDisplayTheme, timeOfDayLabel } from '~/utils/labels'
 
 const toast = useToast()
 const route = useRoute()
@@ -13,6 +13,10 @@ const record = computed(() => workoutStore.getById(id.value))
 
 const isEditing = ref(false)
 const showDeleteModal = ref(false)
+
+const displayTheme = computed(() =>
+  record.value ? resolveDisplayTheme(record.value) : '',
+)
 
 function handleUpdate(data: WorkoutFormData) {
   const result = workoutStore.update(id.value, data)
@@ -48,7 +52,7 @@ function handleDelete() {
     <template v-if="isEditing">
       <MobileTopBar back title="编辑训练" subtitle="调整训练内容后保存" />
       <WorkoutForm
-        :initial="{ date: record.date, timeOfDay: record.timeOfDay, groups: record.groups }"
+        :initial="{ date: record.date, timeOfDay: record.timeOfDay, theme: record.theme, groups: record.groups }"
         submit-label="保存修改"
         show-cancel
         @submit="handleUpdate"
@@ -64,7 +68,7 @@ function handleDelete() {
           {{ timeOfDayLabel(record.timeOfDay) }}训练
         </p>
         <h1 class="mt-2 text-3xl font-black tracking-tight">
-          {{ record.groups[0]?.exerciseName || '训练记录' }}
+          {{ displayTheme }}
         </h1>
         <p class="mt-2 text-sm text-white/80">
           {{ record.groups.length }} 个动作 · 创建于 {{ formatDateTime(record.createdAt) }}
@@ -95,6 +99,9 @@ function handleDelete() {
                 {{ set.setNumber }}
               </span>
               <span class="font-bold text-gray-950 dark:text-white">{{ set.weight }} kg</span>
+              <span class="font-semibold text-gray-700 dark:text-gray-300">
+                {{ set.reps != null ? `${set.reps} 个` : '—' }}
+              </span>
               <span v-if="set.notes" class="min-w-0 flex-1 truncate text-xs text-gray-500">{{ set.notes }}</span>
             </div>
             <p v-if="group.sets.length === 0" class="text-sm text-gray-400">
