@@ -9,6 +9,8 @@ Archive a completed change in the experimental workflow.
 
 **Input**: Optionally specify a change name after `/opsx:archive` (e.g., `/opsx:archive add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
+**When to use**: After implementation is complete. Recommended: run `/opsx:verify` and `/opsx:review` before archiving.
+
 **Steps**
 
 1. **If no change name provided, prompt for selection**

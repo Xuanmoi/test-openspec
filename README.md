@@ -70,6 +70,9 @@ yarn preview
 
 # bun
 bun run preview
+
+# 开发流程
+/opsx:propose  →  /opsx:apply  →  /opsx:verify  →  /opsx:review  →  /opsx:archive
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

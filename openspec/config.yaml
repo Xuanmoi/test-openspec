@@ -1,20 +1,24 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Nuxt 4, Vue 3, TypeScript, Pinia, Nuxt UI 4, Tailwind CSS 4 (via @nuxt/ui).
+  App directory: app/ (pages, components, stores, utils, types).
+  Specs: openspec/specs/ (main), openspec/changes/<name>/ (delta during development).
+  Tests: Vitest + @nuxt/test-utils, tests/unit/ (stores, utils). Run: npm run test:run.
+  CSS entry must include @import "tailwindcss" and @import "@nuxt/ui" in app/assets/css/main.css.
+  Root layout uses UApp wrapper. Mobile-first fitness tracking app, data in localStorage via Pinia persist.
+  Workflow after apply: /opsx:verify → /opsx:review → /opsx:archive.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Impact 一节需列出受影响的 spec capability（如 workout-records）
+    - 若涉及可测业务逻辑，在 What Changes 中注明需要自动化测试
+  specs:
+    - 每个 Requirement 至少包含一个 Scenario，使用 WHEN/THEN 格式
+    - Scenario 应可映射为 Vitest 用例（store/utils 优先）
+  tasks:
+    - 必须包含「## N. 测试」分组（在「验证」分组之前或合并进验证）
+    - 测试任务：为 delta spec 中新增/修改的 Scenario 编写 tests/unit 下的用例
+    - 优先测 stores 与 utils 纯函数，组件仅测关键交互
+    - 验证任务必须包含 npm run test:run 与 npm run build
+    - 单个任务应在一次会话内可完成（约 2 小时内）
